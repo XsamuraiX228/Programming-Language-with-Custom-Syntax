@@ -1,28 +1,69 @@
 use std::collections::HashMap;
-
+use std::io;
 
 #[derive(Debug, PartialEq, Clone)]
-enum Tokens {
-    Let,          // Ключевое слово "LET"
-    Print,        // Ключевое слово "PRINT"
-    Ident(String),// Имя переменной, например "x" или "my_var"
-    Number(i32),  // Число, например "10"
-    Equal,        // Знак равенства "="
-    Newline,      // Конец строки (в BASIC это важно)
+enum KeyWordType {
+    Let,
+    Print,
+    Input,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum Tokens {   
+    KeyWord(KeyWordType),        
+    Ident(String),
+    Number(i32),  
+    Equal,        
+    Newline,      
+}
+
+struct SyntaxDict {
+    keywords: HashMap<String, KeyWordType>
+}
+
+impl SyntaxDict {
+    fn default_basic() -> Self {
+        let mut keywords = HashMap::new();
+        keywords.insert("LET".to_string(), KeyWordType::Let);
+        keywords.insert("PRINT".to_string(), KeyWordType::Print);
+        keywords.insert("INPUT".to_string(), KeyWordType::Input);
+        Self { keywords }
+    }
+
+    // Кастомный русский синтаксис!
+    fn russian_style() -> Self {
+        let mut keywords = HashMap::new();
+        keywords.insert("ПУСТЬ".to_string(), KeyWordType::Let);
+        keywords.insert("ПЕЧАТЬ".to_string(), KeyWordType::Print);
+        keywords.insert("ВВОД".to_string(), KeyWordType::Input);
+        Self { keywords }
+    }
+
+    fn emoji_style() -> Self {
+        let mut keywords = HashMap::new();
+        keywords.insert("✍️".to_string(), KeyWordType::Let);
+        keywords.insert("🖨".to_string(), KeyWordType::Print);
+        keywords.insert("⌨️".to_string(), KeyWordType::Input);
+        Self { keywords }
+    }
 }
 
 struct Lexer {
     input: Vec<char>,
     pos: usize,
+    config: SyntaxDict,
 }
 
 impl Lexer {
-    fn new(input: &str) -> Self {
+    fn new(input: &str, config: SyntaxDict) -> Self {
         Self {
             input: input.chars().collect(),
             pos: 0,
+            config
         }
     }
+
+    // "                   LET"
     fn next_token(&mut self) -> Option<Tokens> {
         while self.pos < self.input.len() && self.input[self.pos] == ' ' {
             self.pos += 1
@@ -42,7 +83,7 @@ impl Lexer {
             self.pos += 1;
             return Some(Tokens::Newline);
         }
-
+        // LET var = 5555 PRINT INPUT
         if ch.is_ascii_digit() {
             let mut num_str = String::new();
             while self.pos < self.input.len() && self.input[self.pos].is_ascii_digit() {
@@ -53,17 +94,17 @@ impl Lexer {
             return Some(Tokens::Number(number));
         }
 
-        if ch.is_ascii_alphabetic() {
+        if !ch.is_whitespace() && ch != '=' && !ch.is_ascii_digit() {
             let mut word_str = String::new();
-            while self.pos < self.input.len() && self.input[self.pos].is_ascii_alphabetic() {
+            while self.pos < self.input.len() && !self.input[self.pos].is_whitespace() && self.input[self.pos] != '='  {
                 word_str.push(self.input[self.pos]);
                 self.pos += 1
             }
-            match word_str.as_str() {
-                "LET" => return Some(Tokens::Let),
-                "PRINT" => return  Some(Tokens::Print),
-                _ => return Some(Tokens::Ident(word_str.to_string())),
+            if let Some(kw_type) = self.config.keywords.get(&word_str) {
+                return Some(Tokens::KeyWord(kw_type.clone()));
             }
+
+            return Some(Tokens::Ident(word_str));
         }
 
         panic!("Syntax Error, EBLAN KONCHENY")
@@ -82,6 +123,7 @@ impl Lexer {
 #[allow(dead_code)]
 enum Command {
     Assign { name: String, value: i32 },
+    Input {name: String},
     Print {name: String},
 }
 
@@ -124,7 +166,7 @@ impl Parser {
         let current_token = &self.tokens[self.pos];
 
         match current_token {
-            Tokens::Let => {
+            Tokens::KeyWord(KeyWordType::Let) => {
 
                 // LET x = 5
 
@@ -155,7 +197,21 @@ impl Parser {
                 Command::Assign { name, value }
             }
 
-            Tokens::Print => {
+            Tokens::KeyWord(KeyWordType::Input) => {
+                self.pos += 1;
+
+                //INPUT
+                let name = match &self.tokens[self.pos] {
+                    Tokens::Ident(name) => name.clone(), // The name found (e.g x)
+                    other => panic!("After LET expected =, but {:?} were given", other),
+                };
+
+                self.pos += 1;
+
+                Command::Input { name }
+            }
+
+            Tokens::KeyWord(KeyWordType::Print) => {
 
                 // PRINT x
 
@@ -169,6 +225,7 @@ impl Parser {
 
                 Command::Print { name }
             }
+
 
             other => panic!("Unexpected command {:?}", other)
         }
@@ -192,6 +249,14 @@ impl InterPrenter {
                     self.env.insert(name, value);
                 }
 
+                Command::Input { name } => {
+                    let mut input = String::new();
+
+                    io::stdin().read_line(&mut input).unwrap();
+                    let value: i32 = input.trim().parse().expect("Expected number, but string were give");
+                    self.env.insert(name, value);
+                }
+
                 Command::Print { name } => {
                     if let Some(val) = self.env.get(&name) {
                         println!("{}", val)
@@ -205,23 +270,53 @@ impl InterPrenter {
 
 
 }
-
-
 fn main() {
-    // main BASIC
-    let source_code = "LET x = 10\nPRINT z"; // z не существует!
+    // --- ВАРИАНТ 1: Стандартный BASIC ---
+    let english_code = "INPUT x\nPRINT x";
+    let config_eng = SyntaxDict::default_basic();
+    
+    let mut lexer_eng = Lexer::new(english_code, config_eng);
+    let tokens_eng = lexer_eng.tokenisize();
+    
+    let mut parser_eng = Parser::new(tokens_eng);
+    let ast_eng = parser_eng.parse();
+    println!("AST из английского кода: {:?}", ast_eng);
 
-    println!("--- Запуск программы ---");
+    let mut interprenter = InterPrenter::new();
+    interprenter.execute(ast_eng);
 
-    // 1. Lexer
-    let mut lexer = Lexer::new(source_code);
+
+    // --- ВАРИАНТ 2: Русский BASIC! ---
+    let russian_code = "ВВОД переменная\nПЕЧАТЬ переменная";
+    let config_rus = SyntaxDict::russian_style(); // Подгружаем русские ключевые слова
+    
+    let mut lexer_rus = Lexer::new(russian_code, config_rus);
+    let tokens_rus = lexer_rus.tokenisize();
+    
+    let mut parser_rus = Parser::new(tokens_rus);
+    let ast_rus = parser_rus.parse();
+    println!("AST из русского кода: {:?}", ast_rus);
+
+    interprenter.execute(ast_rus);
+
+    let emoji_code = "✍️ x = 777\n🖨 x\n⌨️ кастомный_ввод\n🖨 кастомный_ввод";
+
+    let config = SyntaxDict::emoji_style();
+    
+    // Лексер
+    let mut lexer = Lexer::new(emoji_code, config);
     let tokens = lexer.tokenisize();
-
-    // 2. Parser
+    
+    // Парсер
     let mut parser = Parser::new(tokens);
-    let commands = parser.parse();
+    let ast_emoji = parser.parse();
 
-    // 3. Launch InterPrenter
-    let mut interpreter = InterPrenter::new();
-    interpreter.execute(commands);
+    println!("--- Исходный код на Эмодзи ---");
+    println!("{}", emoji_code);
+    println!("AST из эмодзи кода: {:?}", ast_emoji);
+
+    
+    // Интерпретатор
+    println!("--- Выполнение программы ---");
+    interprenter.execute(ast_emoji);
 }
