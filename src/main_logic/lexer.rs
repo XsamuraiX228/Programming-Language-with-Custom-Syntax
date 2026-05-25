@@ -50,7 +50,7 @@ impl Lexer {
             self.pos += 1;
             return Some(Tokens::Newline);
         }
-        // LET var = 5555 PRINT INPUT
+
         if ch.is_ascii_digit() {
             let mut num_str = String::new();
             while self.pos < self.input.len() && self.input[self.pos].is_ascii_digit() {
@@ -64,7 +64,14 @@ impl Lexer {
         if !ch.is_whitespace() && ch != '=' && !ch.is_ascii_digit() {
             let mut word_str = String::new();
             while self.pos < self.input.len() && !self.input[self.pos].is_whitespace() && self.input[self.pos] != '='  {
-                word_str.push(self.input[self.pos]);
+                let current_char = self.input[self.pos];
+                if current_char.is_whitespace() 
+                    || current_char == '=' 
+                    || array_of_valid_operators.contains(&current_char) 
+                {
+                    break;
+                }
+                word_str.push(current_char);
                 self.pos += 1
             }
             if let Some(kw_type) = self.config.keywords.get(&word_str) {
