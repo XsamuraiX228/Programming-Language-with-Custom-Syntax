@@ -24,7 +24,7 @@ pub mod settings {
         
         // 3. Передаем токены в парсер и строим дерево команд (AST)
         let mut parser = Parser::new(tokens);
-        let commands = parser.parse();
+        let commands = parser.parse().expect("Expected Vec<Command>");
         
         // 4. Запускаем интерпретатор на выполнение кода
         let mut interpreter = Interpreter::new();

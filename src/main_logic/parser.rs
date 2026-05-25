@@ -9,27 +9,49 @@ pub enum OperationTree {
 }
 
 impl OperationTree {
-    pub fn evaluate(&self, env: &HashMap<String, i32>) -> i32 {
+    pub fn evaluate(&self, env: &HashMap<String, i32>) -> Result<i32, String> {
         match self {
             Self::Atom(n) => {
-                *n
+                Ok(*n)
             },
             Self::Variable(name) => {
-                *env.get(name).unwrap_or_else(|| {
-                    panic!("Runtime Error: переменная '{}' не найдена!", name);
-                })
+                env.get(name)
+                    .cloned()
+                    .ok_or_else(|| format!("Runtime Error: variable '{}' not found!", name))
             }
             Self::Cons(op,args ) => {
-                let lhs = args[0].evaluate(env);
-                let rhs = args[1].evaluate(env);
+                match args.len() {
+                    1 => {
+                        let rhs = args[0].evaluate(env)?;
+                        match op {
+                            '+' => Ok(rhs),
+                            '-' => Ok(-rhs),
+                            '!' => Ok(factorial(rhs)),
+                            t => Err(format!("Wrong operator {t} ")),
+                        }
+                    }
 
-                match op {
-                    '+' => lhs + rhs,
-                    '-' => lhs - rhs,
-                    '*' => lhs * rhs,
-                    '/' => lhs / rhs,
-                    _ => panic!("Unknow operator {}", op)
+                    2 => {
+                        let lhs = args[0].evaluate(env)?;
+                        let rhs = args[1].evaluate(env)?;
+
+                        match op {
+                            '+' => Ok(lhs + rhs),
+                            '-' => Ok(lhs - rhs),
+                            '*' => Ok(lhs * rhs),
+                            '/' => {
+                                if rhs == 0 {
+                                    return Err("Runtime Error: Division by zero".to_string());
+                                }
+                                Ok(lhs / rhs)
+                            }
+                            '^' => Ok(power(lhs, rhs)),
+                            _ => return Err(format!("Unknow operator {}", op))
+                        }
+                    }
+                    _ => Err(format!("Wrong letght of args"))
                 }
+                
             }
         }
     }
@@ -61,7 +83,7 @@ impl Parser {
         self.tokens.pop()
     }
 
-    pub fn parse(&mut self) -> Vec<Command> {
+    pub fn parse(&mut self) -> Result<Vec<Command>, String> {
         let mut commands = Vec::new();
 
         while self.peek().is_some() {
@@ -70,7 +92,7 @@ impl Parser {
                 continue;
             }
 
-            let cmd = self.parse_command();
+            let cmd = self.parse_command()?;
             commands.push(cmd);
 
             if let Some(Tokens::Newline) = self.peek() {
@@ -80,54 +102,65 @@ impl Parser {
             }
         }
 
-        commands
+        Ok(commands)
     }
 
-    fn parse_command(&mut self) -> Command {
+    fn parse_command(&mut self) -> Result<Command, String> {
         let current_token = self.next().expect("Expected commad");
 
         match current_token {
             Tokens::KeyWord(KeyWordType::Let) => {
                 let name = match self.next() {
                     Some(Tokens::Ident(name)) => name,
-                    other => panic!("Expected name of variable {:?}", other)
+                    other => return Err(format!("Expected name of variable {:?}", other))
                 };
 
                 if self.next() != Some(Tokens::Equal) {
-                    panic!("Expected =");
+                    return Err(format!("Expected ="))
                 }
 
-                let value = self.expr_bp(0);
-
-                Command::Assign { name, value }
+                let value = self.expr_bp(0)?;
+                Ok(Command::Assign { name, value })
             }
 
             Tokens::KeyWord(KeyWordType::Input) => {
                 let name = match self.next() {
                     Some(Tokens::Ident(name)) => name,
-                    other => panic!("Expected name of variable {:?}", other)
+                    other => return Err(format!("Expected name of variable {:?}", other))
                 };
 
-                Command::Input { name }
+                Ok(Command::Input { name })
             }
 
             Tokens::KeyWord(KeyWordType::Print) => {
                 let name = match self.next() {
                     Some(Tokens::Ident(name)) => name,
-                    other => panic!("Expected name of variable {:?}", other)
+                    other => return Err(format!("Expected name of variable {:?}", other))
                 };
-                Command::Print { name }
+                Ok(Command::Print { name })
             }
 
-            other => panic!("Unexpected command {:?}", other)
+            other => Err(format!("Unexpected command token {:?}", other))
         }
     }
 
-    fn expr_bp(&mut self, min_bp: u8) -> OperationTree {
+    fn expr_bp(&mut self, min_bp: u8) -> Result<OperationTree, String> {
         let mut lhs = match self.next() {
             Some(Tokens::Number(num)) => OperationTree::Atom(num),
+            Some(Tokens::Op('(')) => {
+                let lhs = self.expr_bp( 0)?;
+                if self.next() != Some(Tokens::Op(')')) {
+                    return Err("Syntax Error: Expected matching ')'".to_string());
+                }
+                lhs
+            }
+            Some(Tokens::Op(op)) => {
+                let ((), r_bp) = self.prefix_bind_opartor(op)?;
+                let rhs = self.expr_bp( r_bp)?;
+                OperationTree::Cons(op, vec![rhs])
+            }
             Some(Tokens::Ident(name)) => OperationTree::Variable(name),
-            t => panic!("Expected number or variable, but {:?} were given", t),
+            t => return Err(format!("Expected number, variable or prefix operator, but found {:?}", t)),
         }; 
 
         loop {
@@ -135,23 +168,66 @@ impl Parser {
                 Some(Tokens::Op(op)) => *op,
                 _ => break
             };
-            let (left_power, right_power) = self.infixing_operator(op);
-            if left_power < min_bp {
-                break;
+
+            if let Ok((left_power, ())) = self.postfix_bind_operator(op) {
+                if left_power < min_bp {
+                    break;
+                }
+                self.next();
+
+                lhs = OperationTree::Cons(op, vec![lhs]);
+                continue;
             }
 
-            self.next();
-            let rhs = self.expr_bp(right_power);
-            lhs = OperationTree::Cons(op, vec![lhs, rhs])
+            if let Ok((left_power, right_power)) = self.infixing_operator(op) {
+                if left_power < min_bp {
+                    break;
+                }
+
+                self.next();
+                let rhs = self.expr_bp(right_power)?;
+                lhs = OperationTree::Cons(op, vec![lhs, rhs]);
+                continue;
+            }
+            break;
         }
 
-        lhs
+        Ok(lhs)
     }
-    fn infixing_operator(&self, op: char) -> (u8, u8) {
+    fn prefix_bind_opartor(&self, op: char) -> Result<((), u8), String> {
         match op {
-            '+' | '-' => (1,2),
-            '*' | '/' => (3,4),
-            _ => panic!("bad op: {:?}", op) 
+            '+' | '-' => Ok(((), 5)),
+            t => Err(format!("Wrong operator {:?}", t)),
         }
     }
+
+    fn postfix_bind_operator(&self, op: char) ->Result<(u8, ()), String> {
+        match op {
+            '!' => Ok((8, ())),
+            t => Err(format!("Wrong operator {:?}", t)),
+        }
+    }
+
+    fn infixing_operator(&self, op: char) -> Result<(u8, u8), String> {
+        match op {
+            '+' | '-' => Ok((1,2)),
+            '*' | '/' => Ok((3,4)),
+            '^' => Ok((7,6)),
+            _ => Err(format!("Wrong operator {}", op)) 
+        }
+    }
+}
+
+// Additional math functions
+fn power(base: i32, exponent: i32) -> i32 {
+    base.pow(exponent as u32)
+}
+
+fn factorial(mut x: i32) -> i32 {
+    let mut sum = 1;
+    while x > 1 {
+        sum *= x;
+        x -= 1;
+    }
+    sum
 }

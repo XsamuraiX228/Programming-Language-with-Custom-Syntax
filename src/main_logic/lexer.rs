@@ -26,6 +26,7 @@ impl Lexer {
     }
 
     fn next_token(&mut self) -> Option<Tokens> {
+        let array_of_valid_operators = ['+', '-', '*', '/', '^', '!', '(', ')'];
         while self.pos < self.input.len() && self.input[self.pos] == ' ' {
             self.pos += 1
         }
@@ -40,7 +41,7 @@ impl Lexer {
             return Some(Tokens::Equal);
         }
 
-        if ch == '+' || ch == '*' || ch == '-' || ch == '/' {
+        if array_of_valid_operators.contains(&ch) {
             self.pos += 1;
             return Some(Tokens::Op(ch));
         }
@@ -73,7 +74,7 @@ impl Lexer {
             return Some(Tokens::Ident(word_str));
         }
 
-        panic!("Syntax Error, EBLAN KONCHENY")
+        panic!("Syntax Error")
     }
 
     pub fn tokenize(&mut self) -> Vec<Tokens> {

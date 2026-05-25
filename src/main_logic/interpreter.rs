@@ -14,7 +14,7 @@ impl Interpreter {
         for cmd in commads {
             match cmd {
                 Command::Assign { name, value } => {
-                    let final_value = value.evaluate(&self.env);
+                    let final_value = value.evaluate(&self.env).expect("Execute Error");
                     self.env.insert(name, final_value);
                 }
 
