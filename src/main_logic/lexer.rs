@@ -73,7 +73,7 @@ impl Lexer {
             return Some(Tokens::Ident(word_str));
         }
 
-        panic!("Syntax Error, EBLAN KONCHENY")
+        panic!("Syntax Error")
     }
 
     pub fn tokenize(&mut self) -> Vec<Tokens> {
