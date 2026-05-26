@@ -21,7 +21,7 @@ pub mod settings {
         // 2. Создаем лексер (передаем config по ссылке &config) и получаем токены
         let mut lexer = create_lexer(program, &config);
         let tokens = lexer.tokenize();
-        //dbg!(&tokens);
+        dbg!(&tokens);
         
         // 3. Передаем токены в парсер и строим дерево команд (AST)
         let mut parser = Parser::new(tokens);

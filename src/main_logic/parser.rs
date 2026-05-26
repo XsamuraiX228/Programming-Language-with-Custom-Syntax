@@ -67,6 +67,7 @@ pub enum Command<'a> {
     IF {left_value: OperationTree<'a>, cmp: char, right_value: OperationTree<'a>, body: Vec<Command<'a>>},
     Label {name: &'a str},
     GOTO {label: &'a str},
+    Random {name:&'a str, min: i64, max: i64},
 } 
 
 pub struct Parser<'a> {
@@ -94,6 +95,14 @@ impl<'a> Parser<'a> {
             other => return Err(format!("Expected name of variable {:?}", other))
         };
         Ok(name)
+    }
+
+    fn get_num(&mut self) -> Result<i64, String> {
+        let num = match self.next() {
+            Some(Tokens::Number(num)) => num,
+            other => return Err(format!("Expected name of variable {:?}", other))
+        };
+        Ok(num)
     }
 
     pub fn parse(&mut self) -> Result<Vec<Command<'a>>, String> {
@@ -139,6 +148,15 @@ impl<'a> Parser<'a> {
                 Ok(Command::Input { name })
             }
 
+            Tokens::KeyWord(KeyWordType::Print) => {
+                // Смотрим, что идет после PRINT
+                match self.next() {
+                    Some(Tokens::Text(text)) => Ok(Command::PrintStr(text)),
+                    Some(Tokens::Ident(name)) => Ok(Command::PrintVar(name)),
+                    other => Err(format!("Expected string or variable after PRINT, found {:?}", other))
+                }
+            }
+
             Tokens::KeyWord(KeyWordType::If) => {
                 let left_value = self.expr_bp(0)?;
                 let op_token = self.next();
@@ -167,6 +185,14 @@ impl<'a> Parser<'a> {
             Tokens::KeyWord(KeyWordType::Goto) => {
                 let label = self.get_name()?;
                 Ok(Command::GOTO { label })
+            }
+
+            Tokens::KeyWord(KeyWordType::Random) => {
+                let name = self.get_name()?;
+                let min = self.get_num()?;
+                let max = self.get_num()?;
+
+                Ok (Command::Random { name, min, max })
             }
 
             other => Err(format!("Unexpected command token {:?}", other))

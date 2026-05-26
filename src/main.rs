@@ -6,7 +6,7 @@ use basic_lexer::main_logic::syntaxd::Dictionaries;
 
 fn main() {
     let program = "
-        LET SECRET = 42
+        RANDOM SECRET 1 100
         LET TRIES = 0
 
         PRINT \"--- GUESS THE NUMBER GAME ---\"

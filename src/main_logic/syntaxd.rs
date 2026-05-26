@@ -14,6 +14,7 @@ pub enum KeyWordType {
     If,
     Then,
     Goto,
+    Random,
 }
 
 pub struct SyntaxDict {
@@ -30,6 +31,7 @@ impl SyntaxDict {
         keywords.insert("IF".to_string(), KeyWordType::If);
         keywords.insert("THEN".to_string(), KeyWordType::Then);
         keywords.insert("GOTO".to_string(), KeyWordType::Goto);
+        keywords.insert("RANDOM".to_string(), KeyWordType::Random);
         Self { keywords }
     }
 
@@ -42,6 +44,7 @@ impl SyntaxDict {
         keywords.insert("ЕСЛИ".to_string(), KeyWordType::If);
         keywords.insert("ТО".to_string(), KeyWordType::Then);
         keywords.insert("ИДИ".to_string(), KeyWordType::Goto);
+        keywords.insert("РАНДОМ".to_string(), KeyWordType::Random);
         Self { keywords }
     }
 
@@ -53,6 +56,7 @@ impl SyntaxDict {
         keywords.insert("❓".to_string(), KeyWordType::If);
         keywords.insert("➡️".to_string(), KeyWordType::Then);
         keywords.insert("🚀".to_string(), KeyWordType::Goto);
+        keywords.insert("🎲".to_string(), KeyWordType::Random);
         Self { keywords }
     }
 

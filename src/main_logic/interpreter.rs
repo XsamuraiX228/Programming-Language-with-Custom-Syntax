@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use super::parser::Command;
+use rand::*;
 #[allow(dead_code)]
 pub struct Interpreter<'a> {
     env: HashMap<&'a str, i64>
@@ -61,7 +62,7 @@ impl<'a> Interpreter<'a> {
                 self.env.insert(name, value);
                 None
             }
-            
+     
             Command::PrintStr(text) => {
                 println!("{}", text);
                 None
@@ -99,6 +100,18 @@ impl<'a> Interpreter<'a> {
                     }
                 }
                 None
+            }
+
+            Command::Random { name, min, max } => {
+                let mut rng = rand::thread_rng();
+                let min_val = *min;
+                let max_val = *max;
+
+                let random_value: i64 = rng.gen_range(min_val..=max_val);
+                
+                // Записываем его в наше окружение, как обычный LET
+                self.env.insert(name, random_value);
+                None // Прыжка нет, возвращаем None
             }
         }
     }
