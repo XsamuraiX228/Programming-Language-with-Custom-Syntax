@@ -10,16 +10,16 @@ pub mod settings {
         SyntaxDict::choose_dict(dicts) 
     }
 
-    pub fn create_lexer(input: &str, config: SyntaxDict) -> Lexer {
+    pub fn create_lexer<'a>(input: &'a str, config: &'a SyntaxDict) -> Lexer<'a> {
         Lexer::new(input, config)
     }
 
-    pub fn run(input: &str, dicts: Dictionaries) {
+    pub fn run<'a>(program: &'a str, dictionary_type: Dictionaries) {
         // 1. Готовим конфигурацию синтаксиса
-        let config = set_dict(dicts);
+        let config = set_dict(dictionary_type);
         
-        // 2. Создаем лексер и бьем строку на токены
-        let mut lexer = create_lexer(input, config);
+        // 2. Создаем лексер (передаем config по ссылке &config) и получаем токены
+        let mut lexer = create_lexer(program, &config);
         let tokens = lexer.tokenize();
         
         // 3. Передаем токены в парсер и строим дерево команд (AST)
