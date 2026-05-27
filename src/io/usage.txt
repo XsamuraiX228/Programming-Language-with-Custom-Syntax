@@ -1,0 +1,29 @@
+mod loader;
+mod scanner;
+
+use basic_lexer::main_logic::syntaxd::Dictionaries;
+use basic_lexer::{self, settings::run};
+
+pub fn main() {
+    let content_to_load = scanner::scan("testcode");
+
+
+    let path = match content_to_load.first() {
+        Some(p) => p,
+        None => { eprintln!("No .bsa files found"); return; }
+    };
+
+    
+    let code = match loader::load(path) {
+        Ok(text) => text,
+        Err(e) => { eprintln!("Read failed: {}", e); return; }
+    };
+
+
+    println!("CODE len: {} bytes", code.len());
+
+
+    if !code.is_empty() {
+        run(&code, Dictionaries::English);
+    }
+}
