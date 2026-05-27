@@ -77,13 +77,22 @@ impl SyntaxDict {
         Self { keywords }
     }
 
-    pub fn choose_dict(dicts: Dictionaries) -> Self {
+    pub fn choose_dict(dicts: Dictionaries) -> SyntaxDict {
         use Dictionaries::*;
         match dicts {
             Russian => Self::russian_style(),
             English => Self::default_basic(),
             Emoji => Self::emoji_style(),
             Crab => Self::crab_style(),
+        }
+    }
+
+    pub fn get_dict(name_of_dict: &str) -> Dictionaries {
+        match name_of_dict {
+            "RUSSIAN" => Dictionaries::Russian,
+            "EMOJI" => Dictionaries::Emoji,
+            "CRAB" => Dictionaries::Crab,
+            _ => Dictionaries::English,
         }
     }
 }

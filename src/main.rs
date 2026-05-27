@@ -1,41 +1,69 @@
 use basic_lexer::settings::{
-    run
+    run,
+    scan_code,
+    load_code,
 };
 
-use basic_lexer::main_logic::syntaxd::Dictionaries;
+use basic_lexer::main_logic::syntaxd::{Dictionaries, SyntaxDict};
 
-use std::env;
-use std::fs;
-use std::process;
 
 fn main() {
-    // 1. Собираем аргументы, которые передали в терминале
-    let args: Vec<String> = env::args().collect();
-
-    // 2. Проверяем, передал ли пользователь имя файла
-    if args.len() < 2 {
-        println!("Ошибка: Вы не указали файл с программой!");
-        println!("Использование: cargo run -- <имя_файла>");
-        process::exit(1);
-    }
-    
-    // Имя файла — это первый аргумент после `cargo run --`
-    // Например: cargo run -- C:\Folder\Folder\Folder\src\FILES\game.bas
-    let file_path = &args[1];
-
-    // 3. Читаем весь файл в одну строку
-    let program = match fs::read_to_string(file_path) {
-        Ok(content) => content
-            .replace("\r", "")
-            .replace("\u{fe0f}", ""),
-        Err(err) => {
-            println!("Ошибка чтения: {}", err);
-            process::exit(1);
+    // Find files in dir FILES
+    let content_to_load = match scan_code("src/FILES") {
+        Ok(files) => files,
+        Err(e) => {
+            eprintln!("[Scanning error]: {}", e);
+            return;
         }
     };
 
-    println!("Запуск программы {}...", file_path);
-    println!("--------------------------------");
+    // 2. Get file.bsa
+    let path = match content_to_load.first() {
+        Some(p) => p,
+        None => { 
+            eprintln!("[Error]: No files with extension found in folder 'FILES' .bsa"); 
+            return; 
+        }
+    };
 
-    run(&program, Dictionaries::Crab);
+    // 3. Loading the code from the file
+    let mut code = match load_code(path) {
+        Ok(text) => text,
+        Err(e) => { 
+            eprintln!("[Error reading file {:?}]: {}", path, e); 
+            return; 
+        }
+    };
+    // Clean code from Windows /r and emoji unicodes
+    code = code.replace("\r", "").replace("\u{fe0f}", "");
+    let mut config = Dictionaries::English;
+
+    // Check the kind of Dict we need to use
+    // Внутри main.rs, где работает препроцессор:
+    if let Some(first_line) = code.lines().next() {
+        let trimmed = first_line.trim();
+        
+        if trimmed.starts_with("#mode") {
+            if let Some(start_quote) = trimmed.find('"') {
+                if let Some(end_quote) = trimmed.rfind('"') {
+                    if start_quote != end_quote {
+                        let dict_name = &trimmed[start_quote + 1..end_quote];
+                        config = SyntaxDict::get_dict(dict_name); 
+                        println!("[Preprocessor]: Dictionary for language successfully connected: {}", dict_name);
+                    }
+                }
+            }
+            // Отрезаем директиву подключения из кода
+            if let Some(pos) = code.find('\n') {
+                code = code[pos + 1..].to_string();
+            }
+        }
+    }
+    println!("Launching file: {:?}", path);
+    println!("-----------------------------------------");
+
+    // 7. Запускаем твой интерпретатор с динамически выбранным синтаксисом!
+    if !code.is_empty() {
+        run(&code, config);
+    }
 }
