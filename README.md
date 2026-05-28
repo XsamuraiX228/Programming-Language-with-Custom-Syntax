@@ -129,15 +129,18 @@ cargo run
 
 ```
 src/
-├── main.rs               # CLI entrypoint, reads file and calls run()
-├── lib.rs                # Public API: set_dict, create_lexer, run
-└── main_logic/
-    ├── lexer.rs          # Tokenizer — splits source into Tokens<'a>
-    ├── parser.rs         # Pratt parser — builds AST (OperationTree, Command)
-    ├── interpreter.rs    # Executes commands, manages env, handles GOTO
-    └── syntaxd.rs        # Keyword dictionaries (English, Russian, Emoji, Crab)
-└── io/
-    └── scanner.rs
+├── main.rs              # Entering
+├── lib.rs               # Main pipeline
+├── dialect.rs           # Dictionaries 
+├── frontend/            # Module to create AST 
+│   ├── mod.rs           # submodules 
+│   ├── token.rs         
+│   ├── lexer.rs         
+│   ├── ast.rs           
+│   └── parser.rs        
+└── runtime/             # Interprenter
+    ├── mod.rs
+    └── interpreter.rs   
 ```
 
 The pipeline is:
