@@ -72,7 +72,7 @@ pub enum Statement<'a> {
     Input {name: &'a str}, // Input the value
     PrintStr(&'a str), // Print strings
     PrintVar(&'a str), // Get value from variables and print it
-    IF {left_value: Expression<'a>, cmp: char, right_value: Expression<'a>, body: Vec<Statement<'a>>}, // If statement
+    IF {left_value: Expression<'a>, cmp: char, right_value: Expression<'a>}, // If statement
     Label {name: &'a str}, // Mark to control the position where the GOTO will jump
     GOTO {label: &'a str}, // Jump to mark in code
     Random {name:&'a str, min: i64, max: i64}, // Set random value to variable

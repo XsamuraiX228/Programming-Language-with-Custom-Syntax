@@ -129,14 +129,10 @@ impl<'a> Parser<'a> {
         if self.next() != Some(Token::KeyWord(KeyWordType::Then)) {
                 return Err(format!("Expected block THEN"));
         }
-
-        // get the command after THEN to execute it, depending on the result of IF
-        let body = self.parse_command()?;
         Ok(Statement::IF { 
             left_value, 
             cmp, 
-            right_value, 
-            body: vec![body] 
+            right_value
         })
     }
 

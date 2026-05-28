@@ -1,4 +1,4 @@
-use crate::dialect::{KeyWordType};
+use crate::dialect::KeyWordType;
 pub const VALID_OPERATORS: [char; 7] = ['+', '-', '*', '/', '^', '(', ')'];
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token<'a> {   

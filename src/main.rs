@@ -1,11 +1,12 @@
 use basic_lexer::{io::scanner::{
     load_code,
-    scan_code,
-}, run_pipeline};
+    scan_code,}, 
+    run_pipeline
+};
 
 fn main() -> Result<(), String> {
     // Find files in dir FILES
-    let content_to_load = match scan_code("src/FILES") {
+    let content_to_load = match scan_code("FILES") {
         Ok(files) => files,
         Err(e) => {
             return Err(format!("[Scanning error]: {}", e));

@@ -6,7 +6,8 @@ use rand::Rng;
 pub enum Signal<'a> {
     Continue,
     Jump {label: &'a str},
-    None,
+    SkipNext,
+    Exit,
 }
 
 pub struct Enviroment<'a> {
@@ -47,14 +48,16 @@ impl<'a> Interpreter<'a> {
                 marks.insert(name, idx);
             }
         }
+        dbg!(&marks);
         marks
+        
     }
 
     pub fn execute(&mut self, commands: &[Statement<'a>], labels: &HashMap<&'a str, usize>) -> Result<(), String> {
         let mut command_idx = 0;
         while command_idx < commands.len() {
-            match self.execute_single(&commands[command_idx], labels)? {
-                Signal::None => {
+            match self.execute_single(&commands[command_idx])? {
+                Signal::Exit => {
                     break;
                 }
                 Signal::Jump { label } => {
@@ -64,6 +67,9 @@ impl<'a> Interpreter<'a> {
                     } else {
                         return Err(format!("Runtime Error: Label '{}' not found", label));
                     }
+                }
+                Signal::SkipNext => {
+                    command_idx += 2;
                 }
                 Signal::Continue => {
                     command_idx += 1
@@ -76,8 +82,7 @@ impl<'a> Interpreter<'a> {
     // If Some(idx) was returned — GOTO worked and we need to jump to next index
     fn execute_single(
         &mut self, 
-        stmt: &Statement<'a>, 
-        labels: &HashMap<&'a str, usize>) -> Result<Signal<'a>, String> {
+        stmt: &Statement<'a>) -> Result<Signal<'a>, String> {
         match stmt {
             Statement::Assign { name, value } => {
                 let final_value = (value.evaluate(&self.env.map))?;
@@ -87,8 +92,10 @@ impl<'a> Interpreter<'a> {
 
             Statement::Input { name } => {
                 let mut input = String::new();
-                std::io::stdin().read_line(&mut input).map_err(|e| format!("Failed to read line: {}", e))?;
-                let value: i64 = input.trim().parse().map_err(|e| format!("Invalid integer input: {}",e))?;
+                std::io::stdin().read_line(&mut input)
+                .map_err(|e| format!("Failed to read line: {}", e))?;
+                let value: i64 = input.trim().parse()
+                .map_err(|e| format!("Invalid integer input: {}",e))?;
                 self.env.set(name, value);
                 Ok(Signal::Continue)
             }
@@ -109,7 +116,7 @@ impl<'a> Interpreter<'a> {
             }
             
             
-            Statement::IF { left_value, cmp, right_value, body } => {
+            Statement::IF { left_value, cmp, right_value} => {
                 let lhs = left_value.evaluate(&self.env.map)?;
                 let rhs = right_value.evaluate(&self.env.map)?;
 
@@ -122,18 +129,10 @@ impl<'a> Interpreter<'a> {
                 };
 
                 if condition {
-                    // If condition is true, we start cycle and execute programs one by one
-                    for inner_stmt in body {
-                        // Checking signal
-                        let signal = self.execute_single(inner_stmt, labels)?;
-                        // If signal != Continue -> Signal::None or Signal::Jump
-                        if signal != Signal::Continue {
-                            return Ok(signal);
-                        }
-                    }
+                    Ok(Signal::Continue)
+                } else {
+                    Ok(Signal::SkipNext)
                 }
-                // default Signal
-                Ok(Signal::Continue)
             }
 
             Statement::Random { name, min, max } => {
@@ -150,7 +149,7 @@ impl<'a> Interpreter<'a> {
 
             Statement::Label { .. } => Ok(Signal::Continue),
 
-            Statement::End => Ok(Signal::None),
+            Statement::End => Ok(Signal::Exit),
         }
     }
 }
