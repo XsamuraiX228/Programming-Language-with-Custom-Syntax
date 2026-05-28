@@ -42,17 +42,16 @@ impl<'a> Parser<'a> {
         let mut commands = Vec::new();
 
         while let Some(token) = self.peek() {
-            // 2. Игнорируем пустые строки
+            // Skip blank pages
             if token == &Token::Newline {
                 self.next();
                 continue;
             }
 
-            // 3. Парсим обычную команду
+            // Parse line
             let cmd = self.parse_command()?;
             commands.push(cmd);
 
-            // 4. Проверяем перенос строки после команды
             if let Some(Token::Newline) = self.peek() {
                 self.next();
             }
