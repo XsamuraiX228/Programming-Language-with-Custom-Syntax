@@ -1,6 +1,6 @@
 Hello there!
 # 🦎 Chameleon
-A high-performance interpreted programming language engine with morphic syntax mapping, implemented entirely in Rust.
+A programming language with morphic syntax mapping, implemented entirely in Rust.
 
 ## 🏗️ Architecture
 
