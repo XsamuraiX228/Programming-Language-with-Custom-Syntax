@@ -21,14 +21,14 @@ impl<'a> Expression<'a> {
                 match op {
                     OpType::Plus => {
                         if args.len() == 1 {
-                            Ok(args[0].evaluate(env)?)  // унарный плюс
+                            Ok(args[0].evaluate(env)?) 
                         } else {
                             Ok(args[0].evaluate(env)? + args[1].evaluate(env)?)
                         }
                     }
                     OpType::Minus => {
                         if args.len() == 1 {
-                            Ok(-args[0].evaluate(env)?)  // унарный минус
+                            Ok(-args[0].evaluate(env)?)  
                         } else {
                             Ok(args[0].evaluate(env)? - args[1].evaluate(env)?)
                         }
